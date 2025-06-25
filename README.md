@@ -243,7 +243,7 @@ python gui/font_setup.py
 برای سوالات و مشکلات:
 - **مستندات:** فایل‌های راهنما
 - **Issues:** GitHub Issues
-- **Email:** your-email@example.com
+- **Email:** riptt89@gmail.com
 
 ---
 

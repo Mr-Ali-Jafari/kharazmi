@@ -1,0 +1,20 @@
+{
+  "ai_apis": {
+    "openai_api_key": "FAKE",
+    "openai_base_url": "https://api.openai.com/v1",
+    "anthropic_api_key": "",
+    "google_api_key": "",
+    "local_ai_url": "https://openai.jabirproject.org/v1/"
+  },
+  "websocket": {
+    "server_ip": "81.161.229.152",
+    "server_port": 8765,
+    "client_url": "ws://81.161.229.152:8765"
+  },
+  "general": {
+    "language": "fa",
+    "theme": "light",
+    "auto_save": true,
+    "auto_complete": true
+  }
+}

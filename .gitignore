@@ -179,7 +179,6 @@ tmp/
 
 # Configuration files with sensitive data
 config.ini
-settings.json
 secrets.json
 .env
 
