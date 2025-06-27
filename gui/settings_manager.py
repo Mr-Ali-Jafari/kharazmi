@@ -9,11 +9,11 @@ class SettingsManager:
         self.settings_file = settings_file
         self.default_settings = {
             "ai_apis": {
-                "openai_api_key": "",
-                "openai_base_url": "https://api.openai.com/v1",
+                "openai_api_key": "FAKE",
+                "openai_base_url": "https://openai.jabirproject.org/v1",
                 "anthropic_api_key": "",
                 "google_api_key": "",
-                "local_ai_url": "http://localhost:11434"
+                "local_ai_url": "https://openai.jabirproject.org/v1"
             },
             "websocket": {
                 "server_ip": "127.0.0.1",

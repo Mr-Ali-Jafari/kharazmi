@@ -6,6 +6,9 @@ from PyQt5.QtGui import QImage, QPixmap
 import time
 
 class VisionThread(QThread):
+    """
+    ترد بینایی ماشین برای تشخیص حرکات دست و تایپ مجازی
+    """
     frame_ready = pyqtSignal(QImage)
     key_pressed = pyqtSignal(str)
     error_occurred = pyqtSignal(str)
@@ -25,7 +28,7 @@ class VisionThread(QThread):
         )
         self.mp_draw = mp.solutions.drawing_utils
         self.last_key_press_time = 0
-        self.key_press_cooldown = 3.0  # 3 seconds hold time
+        self.key_press_cooldown = 3.0  # مدت زمان نگه داشتن کلید (ثانیه)
         self.current_key = None
         self.key_start_time = None
         self.key_emitted = False
@@ -35,6 +38,9 @@ class VisionThread(QThread):
         self.text_emitted = False  # برای جلوگیری از ارسال مجدد متن
 
     def create_keyboard_layout(self):
+        """
+        ایجاد آرایش کیبورد مجازی
+        """
         # کلیدهای اصلی
         keys = [
             ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'],
@@ -46,37 +52,34 @@ class VisionThread(QThread):
         return keys
 
     def draw_keyboard(self, frame):
+        """
+        رسم کیبورد مجازی روی تصویر
+        """
         height, width = frame.shape[:2]
         keys = self.create_keyboard_layout()
-        
         # تنظیم اندازه کلیدها (کوچکتر)
         key_height = height // (len(keys) + 4)  # تقسیم بر 4 برای کوچکتر کردن
         key_width = width // 12  # کلیدها را باریک‌تر می‌کنیم
-
         # نمایش کلمه در حال نوشتن و جمله کامل
         if self.current_word:
             cv2.putText(frame, f"کلمه: {self.current_word}", (10, 30), 
-                       cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2)  # کاهش سایز فونت
+                       cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2)
         if self.sentence:
             cv2.putText(frame, f"جمله: {self.sentence}", (10, 60), 
-                       cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2)  # کاهش سایز فونت
-
+                       cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2)
         # محاسبه موقعیت کیبورد
         keyboard_y = height - (len(keys) * key_height) - 20
-
         for i, row in enumerate(keys):
             row_width = len(row) * key_width
             start_x = (width - row_width) // 2
             for j, key in enumerate(row):
                 x = start_x + j * key_width
                 y = keyboard_y + i * key_height
-                
                 # تنظیم عرض کلیدهای خاص
                 if key in ['SE', 'ET', 'BC']:
                     key_width_multiplier = 2  # دو برابر عرض عادی
                 else:
                     key_width_multiplier = 1
-                
                 # تغییر رنگ کلید فعلی
                 if self.current_key == key:
                     if self.key_start_time:
@@ -90,38 +93,35 @@ class VisionThread(QThread):
                         color = (0, 255, 0)
                 else:
                     color = (0, 255, 0)
-                
                 # رسم کلید با اندازه تنظیم شده
                 cv2.rectangle(frame, (x, y), (x + (key_width * key_width_multiplier) - 5, y + key_height - 5), color, 2)
                 # متن کوچکتر
-                font_scale = 0.6  # کاهش سایز فونت
-                thickness = 1  # کاهش ضخامت فونت
+                font_scale = 0.6
+                thickness = 1
                 cv2.putText(frame, key, (x + 10, y + key_height - 10), 
                            cv2.FONT_HERSHEY_SIMPLEX, font_scale, color, thickness)
 
     def detect_key_press(self, frame, hand_landmarks):
+        """
+        تشخیص فشردن کلید مجازی با توجه به موقعیت انگشت اشاره
+        """
         if not hand_landmarks:
             self.current_key = None
             self.key_start_time = None
             return None
-
         height, width = frame.shape[:2]
         keys = self.create_keyboard_layout()
         key_height = height // (len(keys) + 4)
         key_width = width // 12
-
-        # Get index finger tip position
+        # موقعیت نوک انگشت اشاره
         index_tip = hand_landmarks.landmark[self.mp_hands.HandLandmark.INDEX_FINGER_TIP]
         x = int(index_tip.x * width)
         y = int(index_tip.y * height)
-
-        # Draw finger position with smaller circle
-        cv2.circle(frame, (x, y), 5, (0, 0, 255), -1)  # کاهش سایز دایره
-
+        # رسم موقعیت انگشت
+        cv2.circle(frame, (x, y), 5, (0, 0, 255), -1)
         # محاسبه موقعیت کیبورد
         keyboard_y = height - (len(keys) * key_height) - 20
-
-        # Check which key is being pressed
+        # بررسی اینکه کدام کلید فشرده شده است
         current_key = None
         for i, row in enumerate(keys):
             row_width = len(row) * key_width
@@ -135,8 +135,7 @@ class VisionThread(QThread):
                     break
             if current_key:
                 break
-
-        # Handle key press timing
+        # مدیریت زمان فشردن کلید
         if current_key:
             if self.current_key == current_key:
                 if not self.key_start_time:
@@ -152,37 +151,33 @@ class VisionThread(QThread):
             self.current_key = None
             self.key_start_time = None
             self.key_emitted = False
-
         return None
 
     def run(self):
+        """
+        اجرای حلقه اصلی بینایی و ارسال سیگنال‌ها
+        """
         try:
             self.cap = cv2.VideoCapture(self.camera_index, cv2.CAP_V4L2)
             if not self.cap.isOpened():
                 self.cap = cv2.VideoCapture(self.camera_index, cv2.CAP_ANY)
-            
             if not self.cap.isOpened():
                 self.error_occurred.emit("خطا در باز کردن دوربین. لطفاً مطمئن شوید که دوربین به درستی متصل است.")
                 return
-
             # تنظیم پارامترهای دوربین
-            self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)  # افزایش رزولوشن
+            self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
             self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
             self.cap.set(cv2.CAP_PROP_FPS, 30)
-
             self.running = True
             while self.running:
                 ret, frame = self.cap.read()
                 if not ret:
                     self.error_occurred.emit("خطا در خواندن فریم از دوربین")
                     break
-
                 frame = cv2.flip(frame, 1)
                 rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
                 results = self.hands.process(rgb_frame)
-                
                 self.draw_keyboard(frame)
-                
                 if results.multi_hand_landmarks:
                     for hand_landmarks in results.multi_hand_landmarks:
                         self.mp_draw.draw_landmarks(frame, hand_landmarks, self.mp_hands.HAND_CONNECTIONS)
@@ -201,14 +196,13 @@ class VisionThread(QThread):
                                     self.key_pressed.emit(self.current_word)
                                     self.current_word = ""
                                 self.key_pressed.emit('\n')
-                                self.sentence = ""  # پاک کردن جمله برای شروع جمله جدید
+                                self.sentence = ""
                                 self.text_emitted = True
                             elif key == 'BC':  # Backspace
                                 if self.current_word:
                                     self.current_word = self.current_word[:-1]
                                     self.key_pressed.emit('backspace')
                                 elif self.sentence:
-                                    # حذف آخرین کلمه از جمله
                                     words = self.sentence.split()
                                     if words:
                                         words.pop()
@@ -219,19 +213,16 @@ class VisionThread(QThread):
                                 self.current_word += key
                                 self.last_word_time = time.time()
                                 self.text_emitted = False
-
                 # اگر 2 ثانیه از آخرین حرف گذشته باشد، کلمه را به جمله اضافه کن
                 if self.current_word and time.time() - self.last_word_time > 2 and not self.text_emitted:
                     self.sentence += self.current_word
                     self.key_pressed.emit(self.current_word)
                     self.current_word = ""
                     self.text_emitted = True
-
                 height, width = frame.shape[:2]
                 bytes_per_line = 3 * width
                 q_image = QImage(frame.data, width, height, bytes_per_line, QImage.Format_RGB888)
                 self.frame_ready.emit(q_image)
-
         except Exception as e:
             self.error_occurred.emit(f"خطا در اجرای دوربین: {str(e)}")
         finally:
@@ -240,22 +231,30 @@ class VisionThread(QThread):
             self.hands.close()
 
     def stop(self):
+        """
+        توقف اجرای ترد بینایی
+        """
         self.running = False
 
 class VisionManager:
+    """
+    مدیریت کلی بینایی ماشین و دوربین‌ها
+    """
     def __init__(self):
         self.available_cameras = self._get_available_cameras()
         self.vision_thread = None
 
     def _get_available_cameras(self):
+        """
+        شناسایی دوربین‌های متصل به سیستم
+        """
         available = []
         # بررسی دوربین‌های موجود
-        for i in range(4):  # Check first 4 camera indices
+        for i in range(4):  # بررسی اولین ۴ دوربین
             try:
                 cap = cv2.VideoCapture(i, cv2.CAP_V4L2)
                 if not cap.isOpened():
                     cap = cv2.VideoCapture(i, cv2.CAP_ANY)
-                
                 if cap.isOpened():
                     available.append(i)
                     cap.release()
@@ -265,14 +264,19 @@ class VisionManager:
         return available
 
     def start_vision(self, camera_index):
+        """
+        شروع ترد بینایی برای دوربین انتخابی
+        """
         if self.vision_thread and self.vision_thread.isRunning():
             self.stop_vision()
-        
         self.vision_thread = VisionThread(camera_index)
         self.vision_thread.start()
         return True
 
     def stop_vision(self):
+        """
+        توقف ترد بینایی
+        """
         if self.vision_thread:
             self.vision_thread.stop()
             self.vision_thread.wait()
